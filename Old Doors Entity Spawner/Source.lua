@@ -285,7 +285,7 @@ end
 	   effect.Chain4.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.PrimaryPart.Attachment
            wait(0.5)
 	   local ts = game:GetService("TweenService")
-           ts:Create(entity.Model.RushNew,TweenInfo.new(2, Enum.EasingStyle.Sine,Enum.EasingDirection.In),{CFrame = entity.Model.RushNew.CFrame + Vector3.new(0,20,0)}):Play()
+           ts:Create(entity.Model.PrimaryPart, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {CFrame = entity.Model.PrimaryPart.CFrame + Vector3.new(0,20,0)}):Play()
            wait(2)
 	   effect:Destroy()
 	   entity.Model:Destroy()
