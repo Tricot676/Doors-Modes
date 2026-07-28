@@ -221,8 +221,13 @@ Creator.runEntity = function(entity)
     entity.Model.Parent = workspace
 
     if entity.Config.FlickerLights[1] then
-        task.spawn(ModuleScripts.ModuleEvents.flickerLights, workspace.CurrentRooms[ReSt.GameData.LatestRoom.Value], entity.Config.FlickerLights[2])
-    end
+    task.spawn(function()
+        local latestRoom = workspace.CurrentRooms:FindFirstChild(tostring(ReSt.GameData.LatestRoom.Value))
+        if latestRoom and ModuleScripts.ModuleEvents.flickerLights then
+            ModuleScripts.ModuleEvents.flickerLights(latestRoom, entity.Config.FlickerLights[2])
+        end
+    end)
+end
 
     entity.Debug.OnEntitySpawned(entity)
     task.wait(entity.Config.DelayTime or 0)
