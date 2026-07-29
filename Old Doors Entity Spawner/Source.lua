@@ -75,7 +75,7 @@ local function drag(model, dest, speed)
             local diff = Vector3.new(dest.X, dest.Y, dest.Z) - rootPos
     
             if diff.Magnitude > 0.1 then
-                model:SetPrimaryPartCFrame(CFrame.new(rootPos + diff.Unit * math.min(step * speed, diff.Magnitude)))
+                model:PivotTo(CFrame.new(rootPos + diff.Unit * math.min(step * speed, diff.Magnitude)))
             else
                 Connections[model].Drag:Disconnect()
     
@@ -199,35 +199,36 @@ end
 Creator.runEntity = function(entity)
     -- Obtain nodes
 
-    local nodes = {}
-
     for _, room in next, workspace.CurrentRooms:GetChildren() do
-        if room:FindFirstChild("Nodes") then
-            local roomNodes = room.Nodes:GetChildren()
+        local pathfindNodes = room:FindFirstChild("PathfindNodes")
+        
+        if pathfindNodes then
+            pathfindNodes = pathfindNodes:GetChildren()
+        else
+            local fakeNode = Instance.new("Part")
+            fakeNode.Name = "1"
+            fakeNode.CFrame = room:WaitForChild("RoomExit").CFrame - Vector3.new(0, room.RoomExit.Size.Y / 2, 0)
 
-            table.sort(roomNodes, function(a, b)
-                return a.Name < b.Name
-            end)
+            pathfindNodes = {fakeNode}
+        end
 
-            for _, node in next, roomNodes do
-                nodes[#nodes + 1] = node
-            end
+        table.sort(pathfindNodes, function(a, b)
+            return tonumber(a.Name) < tonumber(b.Name)
+        end)
+
+        for _, node in next, pathfindNodes do
+            nodes[#nodes + 1] = node
         end
     end
-
+	
     -- Pre-cycle setup
 
     local firstRoom = workspace.CurrentRooms:GetChildren()[1]
     entity.Model.Parent = workspace
 
     if entity.Config.FlickerLights[1] then
-    task.spawn(function()
-        local latestRoom = workspace.CurrentRooms:FindFirstChild(tostring(ReSt.GameData.LatestRoom.Value))
-        if latestRoom and ModuleScripts.ModuleEvents.flickerLights then
-            ModuleScripts.ModuleEvents.flickerLights(latestRoom, entity.Config.FlickerLights[2])
-        end
-    end)
-end
+        task.spawn(ModuleScripts.ModuleEvents.flickerLights, workspace.CurrentRooms[ReSt.GameData.LatestRoom.Value], entity.Config.FlickerLights[2])
+    end
 
     entity.Debug.OnEntitySpawned(entity)
     task.wait(entity.Config.DelayTime or 0)
@@ -279,13 +280,13 @@ end
 			local effect = game:GetObjects("rbxassetid://11555754461")[1]
 	   effect.Parent = game.Workspace
 	   effect:PivotTo(entity.Model.RushNew.CFrame - Vector3.new(0,3,0))
-	   effect.Chain1.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.PrimaryPart.Attachment
-	   effect.Chain2.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.PrimaryPart.Attachment
-	   effect.Chain3.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.PrimaryPart.Attachment
-	   effect.Chain4.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.PrimaryPart.Attachment
+	   effect.Chain1.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.RushNew.Attachment
+	   effect.Chain2.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.RushNew.Attachment
+	   effect.Chain3.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.RushNew.Attachment
+	   effect.Chain4.Attachment:FindFirstChildOfClass("Beam").Attachment1 = entity.Model.RushNew.Attachment
            wait(0.5)
 	   local ts = game:GetService("TweenService")
-           ts:Create(entity.Model.PrimaryPart, TweenInfo.new(2, Enum.EasingStyle.Sine, Enum.EasingDirection.In), {CFrame = entity.Model.PrimaryPart.CFrame + Vector3.new(0,20,0)}):Play()
+           ts:Create(entity.Model.RushNew,TweenInfo.new(2, Enum.EasingStyle.Sine,Enum.EasingDirection.In),{CFrame = entity.Model.RushNew.CFrame + Vector3.new(0,20,0)}):Play()
            wait(2)
 	   effect:Destroy()
 	   entity.Model:Destroy()
@@ -333,7 +334,7 @@ end
                         if #entity.Config.CustomDialog > 0 then
                             ReSt.GameStats["Player_".. Plr.Name].Total.DeathCause.Value = entity.Model.Name
         
-                            debug.setupvalue(getconnections(ReSt.Bricks.DeathHint.OnClientEvent)[1].Function, 1, entity.Config.CustomDialog)
+                            firesignal(ReSt.Bricks.DeathHint.OnClientEvent, entity.Config.CustomDialog)
                         end
                     end
                 end
