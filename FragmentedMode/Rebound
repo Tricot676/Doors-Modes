@@ -1,0 +1,232 @@
+game.Lighting.MainColorCorrection.TintColor = Color3.fromRGB(61, 171, 98)
+
+game.Lighting.MainColorCorrection.Contrast = 0.2
+
+game.Lighting.MainColorCorrection.Saturation = -0.7
+
+local tween = game:GetService("TweenService")
+
+tween:Create(game.Lighting.MainColorCorrection, TweenInfo.new(5), {Contrast = 0}):Play()
+
+tween:Create(game.Lighting.MainColorCorrection, TweenInfo.new(5), {Saturation = 0}):Play()
+
+local TweenService = game:GetService("TweenService")
+
+local TW = TweenService:Create(game.Lighting.MainColorCorrection, TweenInfo.new(5),{TintColor = Color3.fromRGB(255, 255, 255)})
+
+TW:Play()
+
+local cue1 = Instance.new("Sound")
+
+cue1.Parent = game.Workspace
+
+cue1.Name = "Scream"
+
+cue1.SoundId = "rbxassetid://9114397505"
+
+local distort = Instance.new("DistortionSoundEffect")
+
+distort.Parent = cue1
+
+distort.Level = 1
+
+local distort2 = Instance.new("DistortionSoundEffect")
+
+distort2.Parent = cue1
+
+distort2.Level = 1
+
+local pitch = Instance.new("PitchShiftSoundEffect")
+
+pitch.Parent = cue1
+
+pitch.Octave = 0.5
+
+local pitch2 = Instance.new("PitchShiftSoundEffect")
+
+pitch2.Parent = cue1
+
+pitch2.Octave = 0.5
+
+local pitch3 = Instance.new("PitchShiftSoundEffect")
+
+pitch3.Parent = cue1
+
+pitch3.Octave = 0.5
+
+cue1.Volume = 0.1
+
+cue1:Play()
+
+local cue2 = Instance.new("Sound")
+
+cue2.Parent = game.Workspace
+
+cue2.Name = "Spawn"
+
+cue2.SoundId = "rbxassetid://9114221327"
+
+cue2.Volume = 3
+
+cue2:Play()
+
+local CameraShaker = require(game.ReplicatedStorage.CameraShaker)
+
+local camara = game.Workspace.CurrentCamera
+
+local camShake = CameraShaker.new(Enum.RenderPriority.Camera.Value, function(shakeCf)
+
+	camara.CFrame = camara.CFrame * shakeCfend)
+
+camShake:Start()
+
+camShake:ShakeOnce(25,10,0,5.5,1,0)
+
+wait(2.8)
+
+function GetGitSound(GithubSnd,SoundName)
+
+	local url=GithubSnd
+
+	if not isfile(SoundName..".mp3") then
+
+		writefile(SoundName..".mp3", game:HttpGet(url))
+
+	end
+
+	local sound=Instance.new("Sound")
+
+	sound.SoundId=(getcustomasset or getsynasset)(SoundName..".mp3")
+
+	return sound
+
+end
+
+function ReplaceAudGit(GithubSnd,SoundName) 
+
+         local url=GithubSnd 
+
+         if not isfile(SoundName..".mp3") then 
+
+                 writefile(SoundName..".mp3", game:HttpGet(url)) 
+
+         end 
+
+         return (getcustomasset or getsynasset)(SoundName..".mp3") 
+
+ end 
+
+local Creator = loadstring(game:HttpGet("https://raw.githubusercontent.com/Johnny39871/Utilities/refs/heads/main/Doors%20Entity%20Spawner/Source.lua"))()
+
+-- Create entity
+local entity = Creator.createEntity({
+    CustomName = "Rebound", -- Custom name of your entity
+    Model = "rbxassetid://12847597717", -- Can be GitHub file or rbxassetid
+    Speed = 100, -- Percentage, 100 = default Rush speed
+    DelayTime = 0.1, -- Time before starting cycles (seconds)
+    HeightOffset = 1,
+    CanKill = true,
+    KillRange = 50,
+    BreakLights = false,
+    BackwardsMovement = true,
+    FlickerLights = {
+        false, -- Enabled/Disabled
+        2.5, -- Time (seconds)
+    },
+    Cycles = {
+        Min = 1,
+        Max = 1,
+        WaitTime = 1,
+    },
+    CamShake = {
+        true, -- Enabled/Disabled
+        {7, 17, 0.1, 1}, -- Shake values (don't change if you don't know)
+        100, -- Shake start distance (from Entity to you)
+    },
+    Jumpscare = {
+        false, -- Enabled/Disabled
+        {
+            Image1 = "rbxassetid://236777652", -- Image1 url
+            Image2 = "rbxassetid://10914800940", -- Image2 url
+            Shake = false,
+            Sound1 = {
+                0, -- SoundId
+                { Volume = 0.5 }, -- Sound properties
+            },
+            Sound2 = {
+                5567523008, -- SoundId
+                { Volume = 0.5 }, -- Sound properties
+            },
+            Flashing = {
+                true, -- Enabled/Disabled
+                Color3.fromRGB(6, 38, 135), -- Color
+            },
+            Tease = {
+                false, -- Enabled/Disabled
+                Min = 1,
+                Max = 3,
+            },
+        },
+    },
+    CustomDialog = {"You died to Rebound...", "It appears at the next door and has a chance to stay there or run back to the latest door.", "He will come back many times after his initial spawn", "so hide every next door until it is safe.."}, -- Custom death message
+})
+
+-----[[ Advanced ]]-----
+entity.Debug.OnEntitySpawned = function(entityTable)
+    print("Entity has spawned:", entityTable.Model)
+    local sound = ReplaceAudGit("https://github.com/Brololto/Reboundmoving/blob/main/Screen_Recording_20230404-140647_Chrome%20(online-audio-converter.com).mp3?raw=true","ReboundMovingSound")
+
+    sound.Parent = workspace
+
+    sound.Volume = 3
+
+	  sound:Play()
+
+end
+
+entity.Debug.OnEntityDespawned = function(entityTable)
+    print("Entity has despawned:", entityTable.Model)
+end
+
+entity.Debug.OnEntityStartMoving = function(entityTable)
+    print("Entity has started moving:", entityTable.Model)
+end
+
+entity.Debug.OnEntityFinishedRebound = function(entityTable)
+    print("Entity has finished rebound:", entityTable.Model)
+end
+
+entity.Debug.OnEntityEnteredRoom = function(entityTable, room)
+    print("Entity:", entityTable.Model, "has entered room:", room)
+end
+
+entity.Debug.OnLookAtEntity = function(entityTable)
+    print("Player has looked at entity:", entityTable.Model)
+end
+
+entity.Debug.OnDeath = function(entityTable)
+    warn("Player has died.")
+loadstring(game:HttpGet("https://raw.githubusercontent.com/check78/Jumpscares/main/ReboundJumpscare.txt"))()
+
+wait(1.2)
+
+    firesignal(game.ReplicatedStorage.EntityInfo.DeathHint.OnClientEvent, {"You died to Rebound...", "It appears at the next door and has a chance to stay there or run back to the latest door.", "It will come back many times after his initial spawn", "So hide every next door until it is safe."}, "Blue")
+
+	  local ReSt = game.ReplicatedStorage
+
+	  local Plr = game.Players.LocalPlayer
+
+sound:Destroy()
+
+		
+
+	      ReSt.GameStats["Player_".. Plr.Name].Total.DeathCause.Value = "Rebound"
+
+		
+
+
+end
+------------------------
+
+-- Run the created entity
+Creator.runEntity(entity)
