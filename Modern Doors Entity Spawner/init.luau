@@ -137,7 +137,7 @@ local CONST = {
 			},
 			Death = {
 				Type = "Guiding", -- "Curious"
-				Hints = {"Death", "Hints", "Go", "Here"},
+				Hints = {},
 				Cause = ""
 			},
 			Jumpscare = {
