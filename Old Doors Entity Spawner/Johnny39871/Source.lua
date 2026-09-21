@@ -379,7 +379,7 @@ Creator.runEntity = function(entity)
     for cycle = 1, math.random(cycles.Min, cycles.Max) do
         for i = 1, #nodes, 1 do
             if not entity.Model:GetAttribute("StopMovement") then
-                if entity.Config.BreakLights then
+                if entity.Config.BreakLights and nodes[i].Parent then
                     ModuleScripts.ModuleEvents.breakLights(nodes[i].Parent.Parent)
                 end
     
