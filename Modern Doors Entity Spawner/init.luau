@@ -11,8 +11,8 @@
 
 --[[
     MODIFIED COPY of Vynixu's DOORS Entity Spawner V2 (https://github.com/RegularVynixu/DOORS-Entity-Spawner).
-    All credit for the spawner goes to Vynixu. The only change is a built-in Jumpscare config section
-    (see "Jumpscare" in the default config, RunJumpscare, and its call in DamagePlayer).
+    All credit for the spawner goes to Vynixu. The only change is a built-in Jumpscare config section, ported
+    1:1 from the old Doors entity spawner's runJumpscare (search for "Jumpscare" below).
 
     Reloading after editing this file: rejoin, or run  getgenv().EntitySpawnerV2_Jumpscare = nil  first.
 ]]--
@@ -24,6 +24,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/RegularVynixu/Utiliti
 -- \\ Services // --
 
 local CollectionService = game:GetService("CollectionService")
+local CoreGui = game:GetService("CoreGui")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -66,6 +67,12 @@ local Storage = {
 
 local CONST = {
 	BASE_ENTITY_SPEED = 65,
+	JUMPSCARE = { -- Fixed pixel sizes, exactly as the old spawner (MinTeaseSize / MaxTeaseSize / 750 / 2000)
+		TEASE_MIN_SIZE = 150,
+		TEASE_MAX_SIZE = 300,
+		SCARE_START_SIZE = 750,
+		SCARE_END_SIZE = 2000
+	},
 	ATTR = {
 		ENTITY = {
 			Running = false,
@@ -148,12 +155,8 @@ local CONST = {
 					Enabled = false,
 					Min = 1,
 					Max = 1
-				},
-				AspectRatio = 1, -- Image width / height (e.g. 16/9 for wide images, 1 for square)
-				Scale = { -- Image HEIGHT as a multiple of the screen height
-					Start = 0.7, -- Size when the scare begins
-					End = 1.85 -- Size the scare grows to
 				}
+				-- AspectRatio = 16/9 -- Optional: for non-square images (width / height). Leave out to match the original square look.
 			}
 		},
 		DEBUG = {
@@ -591,115 +594,114 @@ local function IsPlayerProtected(): boolean
 	return (tick() - LastRespawn) <= LocalPlayer:GetAttribute("SpawnProtection")
 end
 
-local function GetJumpscareGuiParent(): Instance
-	if typeof(gethui) == "function" then
-		return gethui()
-	end
-	return game:GetService("CoreGui")
-end
+local StoredJumpscareSounds = {}
+local JumpscareActive = false
 
-local function PlayJumpscareSound(data: any): Sound?
-	if typeof(data) ~= "table" or data.Id == nil then return nil end
+local function PlayJumpscareSound(soundId: any, properties: any): Sound
+	for i, v in next, StoredJumpscareSounds do
+		v:Destroy()
+		StoredJumpscareSounds[i] = nil
+	end
 
 	local sound = Instance.new("Sound")
-	local id = tostring(data.Id)
+	sound.SoundId = "rbxassetid://".. ({string.gsub(tostring(soundId), "%D", "")})[1]
+	sound.Playing = true
+	sound.Parent = workspace
 
-	if typeof(data.Properties) == "table" then
-		for property, value in next, data.Properties do
-			if property ~= "SoundId" and property ~= "Parent" then
-				sound[property] = value
-			end
+	for i, v in next, properties do
+		if i ~= "SoundId" and i ~= "Playing" and i ~= "Parent" then
+			sound[i] = v
 		end
 	end
 
-	if id:find("rbxasset://") then -- custom audio
-		sound.SoundId = id
-	else
-		sound.SoundId = "rbxassetid://".. id:gsub("%D", "")
-	end
-
-	sound.Parent = workspace
-	sound:Play()
+	StoredJumpscareSounds[#StoredJumpscareSounds + 1] = sound
 
 	return sound
 end
 
 local function RunJumpscare(config: any)
+	-- Pre-setup
+
 	if typeof(config.Image1) ~= "string" or config.Image1 == "" then
 		warn(debug.traceback("Jumpscare is enabled but Image1 is empty, skipping jumpscare."))
 		return
 	end
 
 	local image2Source = (typeof(config.Image2) == "string" and config.Image2 ~= "") and config.Image2 or config.Image1
-	local ok, image1, image2 = pcall(function()
+	local loaded, image1, image2 = pcall(function()
 		return LoadCustomAsset(config.Image1), LoadCustomAsset(image2Source)
 	end)
-	if not ok then
+	if not loaded then
 		warn(debug.traceback("Failed to load jumpscare images: ".. tostring(image1)))
 		return
 	end
 
-	local ratio = tonumber(config.AspectRatio) or 1
-	local gui = Instance.new("ScreenGui")
-	local background = Instance.new("Frame")
-	local face = Instance.new("ImageLabel")
 	local sound1, sound2 = nil, nil
 
-	gui.Name = "JumpscareGui"
-	gui.IgnoreGuiInset = true
-	gui.DisplayOrder = 999
-	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+	Character:PivotTo(CFrame.new(0, 9e9, 0))
 
-	background.Name = "Background"
-	background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	background.BorderSizePixel = 0
-	background.Size = UDim2.new(1, 0, 1, 0)
-	background.ZIndex = 999
+	-- UI Construction
 
-	face.Name = "Face"
-	face.AnchorPoint = Vector2.new(0.5, 0.5)
-	face.BackgroundTransparency = 1
-	face.Position = UDim2.new(0.5, 0, 0.5, 0)
-	face.ResampleMode = Enum.ResamplerMode.Pixelated
-	face.Image = image1
+	local JumpscareGui = Instance.new("ScreenGui")
+	local Background = Instance.new("Frame")
+	local Face = Instance.new("ImageLabel")
 
-	face.Parent = background
-	background.Parent = gui
-	gui.Parent = GetJumpscareGuiParent()
+	JumpscareGui.Name = "JumpscareGui"
+	JumpscareGui.IgnoreGuiInset = true
+	JumpscareGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
-	-- Sizes are the image HEIGHT as a multiple of the screen height; width follows AspectRatio.
-	local screenHeight = gui.AbsoluteSize.Y
-	local function sizeFor(scale: number): UDim2
-		local height = screenHeight * scale
-		return UDim2.new(0, height * ratio, 0, height)
+	Background.Name = "Background"
+	Background.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+	Background.BorderSizePixel = 0
+	Background.Size = UDim2.new(1, 0, 1, 0)
+	Background.ZIndex = 999
+
+	Face.Name = "Face"
+	Face.AnchorPoint = Vector2.new(0.5, 0.5)
+	Face.BackgroundTransparency = 1
+	Face.Position = UDim2.new(0.5, 0, 0.5, 0)
+	Face.ResampleMode = Enum.ResamplerMode.Pixelated
+	Face.Size = UDim2.new(0, CONST.JUMPSCARE.TEASE_MIN_SIZE, 0, CONST.JUMPSCARE.TEASE_MIN_SIZE)
+	Face.Image = image1
+
+	if typeof(config.AspectRatio) == "number" and config.AspectRatio ~= 1 then
+		local ratio = Instance.new("UIAspectRatioConstraint")
+		ratio.AspectRatio = config.AspectRatio
+		ratio.DominantAxis = Enum.DominantAxis.Width
+		ratio.Parent = Face
 	end
 
-	local teaseMin, teaseMax = 0.14, 0.28
-	face.Size = sizeFor(teaseMin)
+	Face.Parent = Background
+	Background.Parent = JumpscareGui
+	JumpscareGui.Parent = CoreGui
 
 	-- Tease
+
 	if config.Tease.Enabled then
-		sound1 = PlayJumpscareSound(config.Sound1)
+		if typeof(config.Sound1) == "table" then
+			sound1 = PlayJumpscareSound(config.Sound1.Id, config.Sound1.Properties or {})
+		end
 
-		local count = math.max(math.random(config.Tease.Min, config.Tease.Max), 1)
-		local scale = teaseMin
+		local rdmTease = math.random(config.Tease.Min, config.Tease.Max)
 
-		for _ = 1, count do
+		for _ = config.Tease.Min, rdmTease do
 			task.wait(math.random(100, 200) / 100)
-			scale += (teaseMax - teaseMin) / count
-			face.Size = sizeFor(scale)
+
+			local growFactor = (CONST.JUMPSCARE.TEASE_MAX_SIZE - CONST.JUMPSCARE.TEASE_MIN_SIZE) / rdmTease
+			Face.Size = UDim2.new(0, Face.AbsoluteSize.X + growFactor, 0, Face.AbsoluteSize.Y + growFactor)
 		end
 
 		task.wait(math.random(100, 200) / 100)
 	end
 
 	-- Scare
+
 	if config.Flashing.Enabled then
 		task.spawn(function()
-			while gui.Parent do
-				background.BackgroundColor3 = config.Flashing.Color
+			while JumpscareGui.Parent do
+				Background.BackgroundColor3 = config.Flashing.Color
 				task.wait(math.random(25, 100) / 1000)
-				background.BackgroundColor3 = Color3.new(0, 0, 0)
+				Background.BackgroundColor3 = Color3.new(0, 0, 0)
 				task.wait(math.random(25, 100) / 1000)
 			end
 		end)
@@ -707,34 +709,41 @@ local function RunJumpscare(config: any)
 
 	if config.Shake then
 		task.spawn(function()
-			local origin = face.Position
+			local origin = Face.Position
 
-			while gui.Parent do
-				face.Position = origin + UDim2.new(0, math.random(-10, 10), 0, math.random(-10, 10))
-				face.Rotation = math.random(-5, 5)
+			while JumpscareGui.Parent do
+				Face.Position = origin + UDim2.new(0, math.random(-10, 10), 0, math.random(-10, 10))
+				Face.Rotation = math.random(-5, 5)
 
 				task.wait()
 			end
 		end)
 	end
 
-	sound2 = PlayJumpscareSound(config.Sound2)
+	if typeof(config.Sound2) == "table" then
+		sound2 = PlayJumpscareSound(config.Sound2.Id, config.Sound2.Properties or {})
+	end
 
-	face.Image = image2
-	face.Size = sizeFor(config.Scale.Start)
+	Face.Image = image2
+	Face.Size = UDim2.new(0, CONST.JUMPSCARE.SCARE_START_SIZE, 0, CONST.JUMPSCARE.SCARE_START_SIZE)
 
-	TweenService:Create(face, TweenInfo.new(0.75), {
-		Size = sizeFor(config.Scale.End),
+	TweenService:Create(Face, TweenInfo.new(0.75), {
+		Size = UDim2.new(0, CONST.JUMPSCARE.SCARE_END_SIZE, 0, CONST.JUMPSCARE.SCARE_END_SIZE),
 		ImageTransparency = 0.5
 	}):Play()
 	task.wait(0.75)
-	gui:Destroy()
+	JumpscareGui:Destroy()
 
-	if sound1 then sound1:Destroy() end
-	if sound2 then sound2:Destroy() end
+	if sound1 then
+		sound1:Stop()
+	end
+
+	if sound2 then
+		sound2:Stop()
+	end
 end
 
-local function DamagePlayer(entity: any)
+local function ApplyPlayerDamage(entity: any)
 	if Humanoid.Health <= 0 or IsPlayerProtected() then return end
 		
     local config = entity.Config
@@ -745,11 +754,6 @@ local function DamagePlayer(entity: any)
     task.spawn(entity.RunCallback, entity, "OnDamagePlayer", newHealth)
 
     if newHealth == 0 then
-        -- Jumpscare
-        if config.Jumpscare.Enabled then
-            task.spawn(RunJumpscare, config.Jumpscare)
-        end
-
         -- Death hints
         if #config.Death.Hints > 0 then
             PlayerGui.MainUI.Death:GetPropertyChangedSignal("Visible"):Wait()
@@ -787,6 +791,31 @@ local function DamagePlayer(entity: any)
         end
         GameStats["Player_".. LocalPlayer.Name].Total.DeathCause.Value = cause
     end
+end
+
+local function DamagePlayer(entity: any)
+	local config = entity.Config
+
+	-- Jumpscare (lethal hits only): plays first, then the player dies, like the old spawner
+	if
+		config.Jumpscare.Enabled
+		and Humanoid.Health > 0
+		and not IsPlayerProtected()
+		and math.clamp(Humanoid.Health - config.Damage.Amount, 0, Humanoid.MaxHealth) == 0
+	then
+		if JumpscareActive then return end
+
+		JumpscareActive = true
+		task.spawn(function()
+			RunJumpscare(config.Jumpscare)
+			JumpscareActive = false
+
+			ApplyPlayerDamage(entity)
+		end)
+		return
+	end
+
+	ApplyPlayerDamage(entity)
 end
 
 local function GetNodesFromRoom(room: Model, reversed: boolean): { BasePart }
